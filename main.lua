@@ -1,16 +1,21 @@
 function love.load()
     input = require('input')
     tetram = require('tetramino')
-    px = 4
-    py = 1
-    pr = 1
+    _px = 5
+    _py = 1
+    px = _px
+    py = _py
+    _pr = 1
+    pr = _pr
     pid = ''
-    nx = 4
-    ny = -3
+    nx = 5
+    ny = -2
     nid = ''
     
     scale = 3
-    _grid_size = {10, 22}
+    max_x = 10
+    max_y = 22
+    _grid_size = {max_x, max_y}
     _block_size = 25 * scale
     _border = 1 * scale
     _header_size = 4
@@ -27,7 +32,8 @@ function love.load()
                         (_grid_size[2] + 1 + _header_size) * _block_size)
     love.graphics.setBackgroundColor(0.95, 0.95, 0.95)
 
-    
+    next_p()
+    next_p()
 end
 
 
@@ -36,8 +42,8 @@ function love.update(ts)
     if input.get_key('left') then move_piece(-1, 0) end
     if input.get_key('right') then move_piece(1, 0) end
     if input.get_key('up') then rotate_p() end
-    if input.get_key('down') then move_piece(0, 1) end
-    if input.get_key('a1') then next_p() end
+    if input.get_key('down') then fall() end
+ --   if input.get_key('a1') then hit() end
     if input.get_key('a2') then rotate_p() end
 
     update_step(ts)
@@ -55,32 +61,68 @@ function love.draw()
     draw_piece(nid, 2, nx, ny, 'nxt')
     --Drawing active piece
     draw_piece(pid, pr, px, py)
+    --Drawing UI
+    ui_d()
 end
 
+
 function update_step(ts)
+    local fall_step = 1
     _last_step = _last_step + ts
-    if _last_step > step then
-        fall_block()
-        _last_step = 0
+    if _last_step >= step then
+        if valid_pos(pid, pr, px, py + fall_step) then
+            move_piece(0, fall_step)
+            _last_step = 0
+            return true
+        else
+            hit()
+            return false
+        end
     end
 end
 
 
-function fall_block()
-    py = py + 1
+function fall()
+    local can_fall = true
+    while can_fall do
+        can_fall = update_step(step)
+    end
 end
-
 
 function setup_grid(sx, sy)
     local grid = {}
     for x = 1, sx do
         grid[x] = {}
         for y = 1, sy do
-            grid[x][y] = 0
+            grid[x][y] = tetram.back
         end
     end
 
     return grid
+end
+
+function ui_d()
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print('Tetramino/Тетрамино', _block_size, _block_size)
+end
+
+
+function valid_pos(id, rot, x, y)
+    local shape = tetram.shape[id][rot]
+    for j, l in ipairs(shape) do
+        for i, c in ipairs(l) do
+            if c ~= tetram.empty then
+                m = i + x - 1
+                n = j + y - 1
+                if m < 1 or n < 1 then return false end
+                if m > max_x or n > max_y then return false end
+                if game_grid[m][n] ~= tetram.back then
+                    return false
+                end
+            end
+        end
+    end
+    return true
 end
 
 
@@ -88,23 +130,54 @@ function next_p()
     local n = math.random(1, #tetram.ids)
     pid = nid
     nid = tetram.ids[n]
-    pr = 1
+    px = _px
+    py = _py
+    pr = _pr
+    _last_step = 0
 end
 
 
 function rotate_p()
     if pid or false then else return end
     local r_inc = 1
-    pr = pr + 1
-    if pr > #tetram.shape[pid] then
-        pr = 1
+    r_inc = pr + 1
+    if r_inc > #tetram.shape[pid] then
+        r_inc = 1
+    end
+
+    if valid_pos(pid, r_inc, px, py) then
+        pr = r_inc
     end
 end
 
 
 function move_piece(x, y)
-    px = px + x
-    py = py + y
+    if valid_pos(pid, pr, px + x, py + y) then
+        px = px + x
+        py = py + y
+    end
+end
+
+
+function hit()
+    bake_piece(pid, pr, px, py)
+    next_p()
+end
+
+function bake_piece(id, r, x, y)
+    local shape = tetram.shape[id][r]
+    for j, l in ipairs(shape) do
+        for i, c in ipairs(l) do
+            if c ~= tetram.empty then
+                m = i + x - 1
+                n = j + y - 1
+                local invalid =  m < 1 or n < 1 or  m > max_x or n > max_y
+                if not invalid then 
+                    game_grid[m][n] = c
+                end
+            end
+        end
+    end
 end
 
 
@@ -153,3 +226,4 @@ function draw_piece(id, rot, px, py, colour)
         end
     end
 end
+
