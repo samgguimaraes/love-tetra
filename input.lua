@@ -50,7 +50,6 @@ end
 function input.get_key(n)
     isdown = input.keydown[n] > 0
     input.key_sleep(n)
-    if isdown then print(n, isdown) end
     return isdown
 end
 
