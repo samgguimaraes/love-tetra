@@ -11,46 +11,75 @@ function love.load()
     _pr = 1
     pr = _pr
     pid = ''
-    nx = 5
+    nx = 7
     ny = -2
     nid = ''
+
+    _running = true
+    _paused = false
+
+    score = 0
     
     scale = 3
+    _max_scale = 5
+
     max_x = 10
     max_y = 22
     _grid_size = {max_x, max_y}
-    _block_size = 25 * scale
-    _border = 1 * scale
+    _base_block_size = 25
     _header_size = 4
+
+    set_sizes()
+
     game_grid = setup_grid(_grid_size[1], _grid_size[2])
 
     _base_step = 1
+    level = 1
     step = _base_step
     _last_step = 0
     fall_size = 1
 
+    fx = {}
 
     back_c = {0.5, 0.5, 0.5}
 
-    love.window.setMode((_grid_size[1] + 2) * _block_size,
-                        (_grid_size[2] + 1 + _header_size) * _block_size)
     love.graphics.setBackgroundColor(0.95, 0.95, 0.95)
+    font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 12)
 
     next_p()
     next_p()
+    add_score(0)
+
+--    local last_level = level
+--   local last_score = 0
+--    while level <= 10 do
+--        score = score + 1
+--        add_score(0)
+--        if level ~= last_level then
+--            one_score = (level + 4)
+--            d_score = score - last_score
+--            print(level, score, one_score, d_score, d_score/one_score)
+--            last_score = score
+--        end
+--        last_level = level
+--    end
 end
 
 
 function love.update(ts)
     input.update(ts)
-    if input.get_key('left') then move_p(-1, 0) end
-    if input.get_key('right') then move_p(1, 0) end
-    if input.get_key('up') then rotate_p() end
-    if input.get_key('down') then fall() end
- --   if input.get_key('a1') then hit() end
-    if input.get_key('a2') then rotate_p() end
+    if input.get_key('cancel') then pause() end
 
-    update_step(ts)
+    if _running and not _paused then
+        if input.get_key('left') then move_p(-1, 0) end
+        if input.get_key('right') then move_p(1, 0) end
+        if input.get_key('up') then rotate_p() end
+        if input.get_key('down') then fall() end
+        if input.get_key('a2') then rotate_p() end
+        if input.get_key('f5') then set_scale(scale - 1) end
+        if input.get_key('f6') then set_scale(scale + 1) end
+        update_step(ts)
+    end
 end
 
 
@@ -59,12 +88,12 @@ function love.draw()
     d_background() 
     --Drawing the game state
     d_grid(game_grid)
-    --Drawing FX layer
-    d_grid(fx)
     --Drawing next piece
     d_piece(nid, 2, nx, ny, 'nxt')
     --Drawing active piece
     d_piece(pid, pr, px, py)
+    --Drawing FX layer
+    d_fx()
     --Drawing UI
     ui_d()
 end
@@ -80,13 +109,19 @@ function update_step(ts)
         else
             hit()
             no_hit = false
-            if clear_lines(game_grid) then
+            local lines_clear = clear_lines(game_grid) 
+            if lines_clear > 0 then
+                add_score(lines_clear)
                 fall_lines(game_grid)
             end
         end
     end
 
     return no_hit
+end
+
+function pause()
+    _paused = not _paused
 end
 
 
@@ -114,7 +149,13 @@ end
 
 function ui_d()
     love.graphics.setColor(0, 0, 0)
-    love.graphics.print('Tetramino/Тетрамино', _block_size, _block_size)
+    love.graphics.setFont(font)
+    love.graphics.print('Любит Тетрамино', 
+                        _block_size/2, _block_size/2, 0, scale, scale)
+    love.graphics.print('Score: ' .. string.format('%08d', score), 
+                        _block_size/2, _block_size, 0, scale, scale)
+    love.graphics.print('Level: ' .. string.format('%02d', level), 
+                        _block_size/2, _block_size*1.5, 0, scale, scale)
 end
 
 
@@ -193,20 +234,18 @@ end
 
 
 function clear_lines(grid_map)
-    if grid_map or false then else return end
-    print('Clearing lines')
-    local any_fell = false
+    local n_fell = 0
+    if grid_map or false then else return n_fell end
     for y, l in ipairs(grid_map) do
-        print(y, n_line(l))
         if n_line(l) == #l then
-            any_fell = true
+            n_fell = n_fell + 1
             for x, k in ipairs(l) do
                 grid_map[y][x] = tetram.back
             end
         end
     end
 
-    return any_fell
+    return n_fell
 end
 
 
@@ -288,6 +327,10 @@ function d_square(x, y, c)
 end
 
 
+function d_fx()
+end
+
+
 function d_piece(id, rot, px, py, colour)
     local shape = tetram.shape[id]
     if shape or false then else return end
@@ -299,5 +342,29 @@ function d_piece(id, rot, px, py, colour)
             d_square(px + x - 1, py + y - 1, tetram.colour[c])
         end
     end
+end
+
+
+function set_scale(new_scale)
+    if new_scale <= 0 then new_scale = 1 end
+    if new_scale > _max_scale then new_scale = _max_scale end
+    scale = new_scale
+    set_sizes()
+end
+
+
+function set_sizes()
+    _block_size = _base_block_size * scale
+    _border = 1 * scale
+    love.window.setMode((_grid_size[1] + 2) * _block_size,
+                        (_grid_size[2] + 1 + _header_size) * _block_size)
+end
+
+
+function add_score(n_lines)
+    local s_scale = 4
+    score = score + (((n_lines * (n_lines + 1)) / 2) * (level + s_scale))
+    level = math.floor((score)^0.6/10) + 1
+    step = _base_step * (1/(level + 4)) * 6
 end
 
