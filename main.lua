@@ -6,8 +6,6 @@ function love.load()
 
     _px = 5
     _py = 1
-    px = _px
-    py = _py
     _pr = 1
     pr = _pr
     pid = ''
@@ -15,7 +13,7 @@ function love.load()
     ny = -2
     nid = ''
 
-    _running = true
+    _game_over = false
     _paused = false
 
     score = 0
@@ -31,11 +29,7 @@ function love.load()
 
     set_sizes()
 
-    game_grid = setup_grid(_grid_size[1], _grid_size[2])
-
     _base_step = 1
-    level = 1
-    step = _base_step
     _last_step = 0
     fall_size = 1
 
@@ -46,9 +40,7 @@ function love.load()
     love.graphics.setBackgroundColor(0.95, 0.95, 0.95)
     font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 12)
 
-    next_p()
-    next_p()
-    add_score(0)
+    reset_all()
 end
 
 
@@ -56,7 +48,7 @@ function love.update(ts)
     input.update(ts)
     if input.get_key('cancel') then pause() end
 
-    if _running and not _paused then
+    if not _game_over and not _paused then
         if input.get_key('left') then move_p(-1, 0) end
         if input.get_key('right') then move_p(1, 0) end
         if input.get_key('up') then rotate_p() end
@@ -64,7 +56,15 @@ function love.update(ts)
         if input.get_key('a2') then rotate_p() end
         if input.get_key('f5') then set_scale(scale - 1) end
         if input.get_key('f6') then set_scale(scale + 1) end
-        update_step(ts)
+        if update_step(ts) then
+            _paused = true
+            _game_over = true
+        end
+    end
+    if _game_over then 
+        if not _paused then
+            reset_all()
+        end
     end
 end
 
@@ -86,15 +86,14 @@ end
 
 
 function update_step(ts)
-    local no_hit = true
     _last_step = _last_step + ts
+    local lost = false
     if _last_step >= step then
         if valid_pos(pid, pr, px, py + fall_size) then
             move_p(0, fall_size)
             _last_step = 0
         else
-            hit()
-            no_hit = false
+            lost = hit()
             local lines_clear = clear_lines(game_grid) 
             if lines_clear > 0 then
                 add_score(lines_clear)
@@ -103,11 +102,38 @@ function update_step(ts)
         end
     end
 
-    return no_hit
+    return lost
 end
+
 
 function pause()
     _paused = not _paused
+end
+
+
+function game_over()
+
+end
+
+
+function reset_all()
+    px = _px
+    py = _py
+    pid = ''
+    nid = ''
+
+    game_grid = setup_grid(_grid_size[1], _grid_size[2])
+
+    level = 1
+    score = 0
+
+    next_p()
+    next_p()
+
+    _paused = false
+    _game_over = false
+
+    add_score(0)
 end
 
 
@@ -176,6 +202,8 @@ function next_p()
     py = _py
     pr = _pr
     _last_step = 0
+
+    return valid_pos(pid, pr, px, py)
 end
 
 
@@ -203,7 +231,7 @@ end
 
 function hit()
     bake_p(pid, pr, px, py)
-    next_p()
+    return not next_p()
 end
 
 function bake_p(id, r, x, y)
