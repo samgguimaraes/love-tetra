@@ -49,20 +49,6 @@ function love.load()
     next_p()
     next_p()
     add_score(0)
-
---    local last_level = level
---   local last_score = 0
---    while level <= 10 do
---        score = score + 1
---        add_score(0)
---        if level ~= last_level then
---            one_score = (level + 4)
---            d_score = score - last_score
---            print(level, score, one_score, d_score, d_score/one_score)
---            last_score = score
---        end
---        last_level = level
---    end
 end
 
 
@@ -127,6 +113,10 @@ end
 
 function fall()
     local can_fall = valid_pos(pid, pr, px, py + fall_size)
+    if not can_fall then
+        _last_step = step
+        return
+    end
     while can_fall do
         move_p(0, fall_size)
         can_fall = valid_pos(pid, pr, px, py + fall_size)
@@ -364,7 +354,7 @@ end
 function add_score(n_lines)
     local s_scale = 4
     score = score + (((n_lines * (n_lines + 1)) / 2) * (level + s_scale))
-    level = math.floor((score)^0.6/10) + 1
+    level = math.floor((score + 100)^0.5/3) - 2
     step = _base_step * (1/(level + 4)) * 6
 end
 
