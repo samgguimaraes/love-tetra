@@ -1,6 +1,9 @@
 function love.load()
     input = require('input')
     tetram = require('tetramino')
+
+    math.randomseed(os.time())
+
     _px = 5
     _py = 1
     px = _px
@@ -24,6 +27,7 @@ function love.load()
     _base_step = 1
     step = _base_step
     _last_step = 0
+    fall_size = 1
 
 
     back_c = {0.5, 0.5, 0.5}
@@ -39,8 +43,8 @@ end
 
 function love.update(ts)
     input.update(ts)
-    if input.get_key('left') then move_piece(-1, 0) end
-    if input.get_key('right') then move_piece(1, 0) end
+    if input.get_key('left') then move_p(-1, 0) end
+    if input.get_key('right') then move_p(1, 0) end
     if input.get_key('up') then rotate_p() end
     if input.get_key('down') then fall() end
  --   if input.get_key('a1') then hit() end
@@ -58,43 +62,50 @@ function love.draw()
     --Drawing FX layer
     d_grid(fx)
     --Drawing next piece
-    draw_piece(nid, 2, nx, ny, 'nxt')
+    d_piece(nid, 2, nx, ny, 'nxt')
     --Drawing active piece
-    draw_piece(pid, pr, px, py)
+    d_piece(pid, pr, px, py)
     --Drawing UI
     ui_d()
 end
 
 
 function update_step(ts)
-    local fall_step = 1
+    local no_hit = true
     _last_step = _last_step + ts
     if _last_step >= step then
-        if valid_pos(pid, pr, px, py + fall_step) then
-            move_piece(0, fall_step)
+        if valid_pos(pid, pr, px, py + fall_size) then
+            move_p(0, fall_size)
             _last_step = 0
-            return true
         else
             hit()
-            return false
+            no_hit = false
+            if clear_lines(game_grid) then
+                fall_lines(game_grid)
+            end
         end
     end
+
+    return no_hit
 end
 
 
 function fall()
-    local can_fall = true
+    local can_fall = valid_pos(pid, pr, px, py + fall_size)
     while can_fall do
-        can_fall = update_step(step)
+        move_p(0, fall_size)
+        can_fall = valid_pos(pid, pr, px, py + fall_size)
     end
+    _last_step = 0
 end
+
 
 function setup_grid(sx, sy)
     local grid = {}
-    for x = 1, sx do
-        grid[x] = {}
-        for y = 1, sy do
-            grid[x][y] = tetram.back
+    for y = 1, sy do
+        grid[y] = {}
+        for x = 1, sx do
+            grid[y][x] = tetram.back
         end
     end
 
@@ -116,7 +127,7 @@ function valid_pos(id, rot, x, y)
                 n = j + y - 1
                 if m < 1 or n < 1 then return false end
                 if m > max_x or n > max_y then return false end
-                if game_grid[m][n] ~= tetram.back then
+                if game_grid[n][m] ~= tetram.back then
                     return false
                 end
             end
@@ -151,7 +162,7 @@ function rotate_p()
 end
 
 
-function move_piece(x, y)
+function move_p(x, y)
     if valid_pos(pid, pr, px + x, py + y) then
         px = px + x
         py = py + y
@@ -160,11 +171,11 @@ end
 
 
 function hit()
-    bake_piece(pid, pr, px, py)
+    bake_p(pid, pr, px, py)
     next_p()
 end
 
-function bake_piece(id, r, x, y)
+function bake_p(id, r, x, y)
     local shape = tetram.shape[id][r]
     for j, l in ipairs(shape) do
         for i, c in ipairs(l) do
@@ -173,7 +184,7 @@ function bake_piece(id, r, x, y)
                 n = j + y - 1
                 local invalid =  m < 1 or n < 1 or  m > max_x or n > max_y
                 if not invalid then 
-                    game_grid[m][n] = c
+                    game_grid[n][m] = c
                 end
             end
         end
@@ -181,10 +192,73 @@ function bake_piece(id, r, x, y)
 end
 
 
+function clear_lines(grid_map)
+    if grid_map or false then else return end
+    print('Clearing lines')
+    local any_fell = false
+    for y, l in ipairs(grid_map) do
+        print(y, n_line(l))
+        if n_line(l) == #l then
+            any_fell = true
+            for x, k in ipairs(l) do
+                grid_map[y][x] = tetram.back
+            end
+        end
+    end
+
+    return any_fell
+end
+
+
+function fall_lines(grid_map)
+    local final_pos = {}
+    next_line = #grid_map
+    for l = #grid_map, 1, -1 do
+        if n_line(grid_map[l]) > 0 then
+            final_pos[next_line] = l
+            next_line = next_line - 1
+        end
+    end
+
+    for i = #grid_map, next_line + 1, -1 do
+        copy_v(grid_map[i], grid_map[final_pos[i]])
+    end
+    for i = next_line, 1, -1 do
+        zero_v(grid_map[i])
+    end
+end
+
+
+function copy_v(a, b)
+    for i, v in pairs(b) do
+        a[i] = v
+    end
+end
+
+
+function zero_v(a)
+    for i, v in pairs(a) do
+        a[i] = tetram.back
+    end
+end
+
+
+function n_line(line)
+    local total = 0
+    for _, i in pairs(line) do
+        if i ~= tetram.back then
+            total = total + 1
+        end
+    end
+
+    return total
+end
+
+
 function d_grid(grid_map)
     if grid_map or false then else return end
-    for x, l in ipairs(grid_map) do
-        for y, k in ipairs(l) do
+    for y, l in ipairs(grid_map) do
+        for x, k in ipairs(l) do
             local c = tetram.colour[k]
             d_square(x, y, c)
         end
@@ -214,7 +288,7 @@ function d_square(x, y, c)
 end
 
 
-function draw_piece(id, rot, px, py, colour)
+function d_piece(id, rot, px, py, colour)
     local shape = tetram.shape[id]
     if shape or false then else return end
     if rot > #shape then rot = 1 end
