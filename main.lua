@@ -38,7 +38,8 @@ function love.load()
     back_c = {0.5, 0.5, 0.5}
 
     love.graphics.setBackgroundColor(0.95, 0.95, 0.95)
-    font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 12)
+    font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 14)
+    font_go = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 24)
 
     reset_all()
 end
@@ -47,6 +48,7 @@ end
 function love.update(ts)
     input.update(ts)
     if input.get_key('cancel') then pause() end
+    if input.get_key('quit') then love.event.quit() end
 
     if not _game_over and not _paused then
         if input.get_key('left') then move_p(-1, 0) end
@@ -82,6 +84,8 @@ function love.draw()
     d_fx()
     --Drawing UI
     ui_d()
+    --Drawing Score Screen, if game over
+    game_over()
 end
 
 
@@ -112,7 +116,34 @@ end
 
 
 function game_over()
-
+    if not _game_over and not _paused then return end
+    love.graphics.setColor(0, 0, 0, 0.4)
+    local over_hang = _block_size/2
+    love.graphics.rectangle('fill', 
+                            _block_size - over_hang, 
+                            _header_size * _block_size - over_hang, 
+                            _block_size * max_x + 2*over_hang,
+                            _block_size * max_y + 2*over_hang)
+    if not _game_over then return end
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle('fill', 
+                            2*_block_size - over_hang, 
+                            (_header_size + 3) * _block_size - over_hang, 
+                            _block_size * (max_x - 2) + 2*over_hang,
+                            _block_size * 6 + 2*over_hang)
+    love.graphics.setColor(1, 1, 1, 0.8)
+    love.graphics.rectangle('fill', 
+                            2*_block_size, 
+                            (_header_size + 3) * _block_size, 
+                            _block_size * (max_x - 2),
+                            _block_size * 6)
+    love.graphics.setFont(font_go)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.printf('Финальный\nсчет:\n\n' .. string.format('%08d', score), 
+                        2.5*_block_size, (_header_size + 4) * _block_size,
+                        (_block_size * (max_x - 3))/scale,
+                        'center', 0, scale, scale)
+    
 end
 
 
@@ -166,12 +197,10 @@ end
 function ui_d()
     love.graphics.setColor(0, 0, 0)
     love.graphics.setFont(font)
-    love.graphics.print('Любит Тетрамино', 
-                        _block_size/2, _block_size/2, 0, scale, scale)
-    love.graphics.print('Score: ' .. string.format('%08d', score), 
-                        _block_size/2, _block_size, 0, scale, scale)
-    love.graphics.print('Level: ' .. string.format('%02d', level), 
-                        _block_size/2, _block_size*1.5, 0, scale, scale)
+    love.graphics.print('Любит Тетрамино\n' .. 
+                        'Счет: ' ..  string.format('%08d', score) ..
+                        '\nЭтаж: ' .. string.format('%02d', level), 
+                        _block_size*0.75, _block_size*1.25, 0, scale, scale)
 end
 
 

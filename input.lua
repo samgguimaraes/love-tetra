@@ -11,7 +11,8 @@ input.keys =
     a2 = {'x', 'return'},
     cancel = {'escape', 'c'},
     f5 = {'f5'},
-    f6 = {'f6'}
+    f6 = {'f6'},
+    quit = {'q'}
 }
 
 input.keydown = {}
