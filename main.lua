@@ -18,13 +18,13 @@ function love.load()
 
     score = 0
     
-    scale = 3
+    scale = 2
     _max_scale = 5
 
     max_x = 10
     max_y = 22
     _grid_size = {max_x, max_y}
-    _base_block_size = 25
+    _base_block_size = 20
     _header_size = 4
 
     set_sizes()
@@ -38,8 +38,8 @@ function love.load()
     back_c = {0.5, 0.5, 0.5}
 
     love.graphics.setBackgroundColor(0.95, 0.95, 0.95)
-    font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 14)
-    font_go = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 24)
+    font = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 12)
+    font_go = love.graphics.newFont('fonts/cyrillic_pixel-7.ttf', 20)
 
     reset_all()
 end
