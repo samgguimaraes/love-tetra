@@ -1,3 +1,6 @@
+# LOVE compacted project
+*.love
+
 # Compiled Lua sources
 luac.out
 
